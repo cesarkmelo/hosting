@@ -56,7 +56,7 @@ El archivo `.env` de producción debe existir en la carpeta `app-directory` y nu
 touch tmp/restart.txt
 ```
 
-Mientras el VPS no tenga las fuentes completas, el deploy operativo es compilar localmente y subir `dist/`, preservando `data/database.json` y `.env`.
+Mientras el VPS no tenga las fuentes completas, el deploy operativo es compilar localmente y subir `dist/`, preservando los archivos de configuracion.
 
 ## Flujo simple de actualizacion
 
