@@ -1,10 +1,14 @@
 node_modules/
 build/
 dist/
+dist.backup-*/
 coverage/
 data/*.json
 .DS_Store
+*.zip
 *.log
 .env*
 !.env.example
 .local-secrets/
+public/
+tmp/

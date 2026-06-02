@@ -59,6 +59,91 @@ touch tmp/restart.txt
 
 Mientras el VPS no tenga las fuentes completas, el deploy operativo es compilar localmente y subir `dist/`, preservando `data/database.json` y `.env`.
 
+## Flujo simple de actualizacion
+
+Este es el flujo normal para actualizar la app sin romper produccion.
+
+### 1. Cambiar en local
+
+Editar archivos en el Mac, dentro de este proyecto.
+
+No editar directamente archivos de produccion en el VPS salvo emergencia.
+
+### 2. Probar en local
+
+```bash
+npm install
+npm run lint
+npm run build
+```
+
+Si `npm run build` falla, no subir al VPS.
+
+### 3. Guardar cambios en Git
+
+```bash
+git status
+git add .
+git commit -m "Descripcion corta del cambio"
+git push
+```
+
+Antes de hacer commit, confirmar que Git no esta incluyendo `.env`, `data/database.json`, `dist/`, `node_modules/` ni `.local-secrets/`.
+
+### 4. Actualizar el VPS
+
+Entrar al VPS y moverse a la carpeta de la app:
+
+```bash
+cd /var/www/vhosts/alfamediaweb.com/hosting.alfamediaweb.com/app-directory
+git pull
+npm install
+npm run build
+touch tmp/restart.txt
+```
+
+`touch tmp/restart.txt` le pide a Passenger/Plesk que reinicie la app Node.
+
+### 5. Verificar
+
+Abrir:
+
+```text
+https://hosting.alfamediaweb.com
+```
+
+Tambien se puede verificar que el backend responde:
+
+```bash
+curl https://hosting.alfamediaweb.com/api/data
+```
+
+La respuesta esperada sin iniciar sesion es `401 Acceso no autorizado`. Eso significa que Express esta activo y protegiendo la API.
+
+## Explicacion basica
+
+- **Local**: carpeta del Mac donde se editan archivos y se prueban cambios.
+- **GitHub**: copia central del codigo. El repo es `cesarkmelo/hosting`.
+- **VPS**: servidor donde vive la app real.
+- **Pull**: traer al VPS los ultimos cambios desde GitHub.
+- **Build**: generar la carpeta `dist/`, que es lo que el navegador carga.
+- **Restart**: reiniciar la app para que use el codigo nuevo.
+- **`.env`**: archivo privado con variables de produccion. No se sube a Git.
+- **`data/database.json`**: base de datos local de clientes. No se sube a Git.
+
+## Regla importante de Vite
+
+`VITE_GOOGLE_CLIENT_ID` se usa en el navegador y queda grabada dentro de `dist/` durante el build.
+
+Si se cambia `VITE_GOOGLE_CLIENT_ID` en `.env`, hay que ejecutar otra vez:
+
+```bash
+npm run build
+touch tmp/restart.txt
+```
+
+Solo cambiar `.env` no actualiza el JavaScript que ya fue compilado.
+
 ## Regla de seguridad
 
 No subir a Git:
