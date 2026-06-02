@@ -39,7 +39,6 @@ npm run build
 - Ruta: `/var/www/vhosts/alfamediaweb.com/hosting.alfamediaweb.com/app-directory`
 - Entrada compilada: `dist/index.html`
 - Backend compilado: `dist/server.cjs`
-- Base de datos JSON: `data/database.json`
 
 El archivo `.env` de producción debe existir en la carpeta `app-directory` y nunca debe versionarse.
 
