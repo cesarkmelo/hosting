@@ -1,0 +1,6 @@
+{
+  "name": "AlfamediaWEB Hosting Manager",
+  "description": "Sistema moderno y minimalista de control de hosting, registro de clientes, gestión de pagos y envío automatizado de correos de recordatorio de vencimiento.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
