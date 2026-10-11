@@ -298,7 +298,7 @@ async function runReminderCheck(): Promise<{ triggeredCount: number; details: st
     const alreadySent = (type: string) => {
       return logs.some(log => 
         log.clientId === client.id && 
-        log.type === type && 
+        (log.type === type || (type === '15_days_before' && log.type === 'manual' && diffDays > 0 && diffDays <= 15)) &&
         log.status === 'success' && 
         log.domain === client.domain &&
         // If sentAt matches the client's currently set expiry date or within the last 6 months of same expiry year
