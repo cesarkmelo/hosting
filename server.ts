@@ -237,22 +237,46 @@ async function sendNotificationEmail(client: Client, type: '15_days_before' | 'd
 async function runReminderCheck(): Promise<{ triggeredCount: number; details: string[] }> {
   const db = readDb();
   const smtp = db.smtp;
-  
-  // Skip automatic cron trigger when SMTP is unconfigured to avoid cluttering error logs or failing check cycles
-  if (!smtp || !smtp.host || !smtp.user || !smtp.pass) {
-    console.log('Chequeo automático de vencimiento: SMTP no configurado. Omitiendo despacho.');
-    return { triggeredCount: 0, details: ['SMTP no configurado. Omitiendo chequeo automático.'] };
-  }
-
   const clients = db.clients;
   const logs = db.logs;
-  const company = db.company;
-
   let triggeredCount = 0;
   const details: string[] = [];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // A paid status applies to the current cycle. Reopen renewal processing
+  // 20 days before expiry, leaving a five-day margin before the 15-day email.
+  let statusChanged = false;
+  for (const client of clients) {
+    if (client.paymentStatus !== 'paid' || !client.expiryDate) continue;
+
+    const expiryParts = client.expiryDate.split('-');
+    if (expiryParts.length !== 3) continue;
+
+    const expiry = new Date(Number(expiryParts[0]), Number(expiryParts[1]) - 1, Number(expiryParts[2]));
+    expiry.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 20) {
+      client.paymentStatus = 'pending';
+      statusChanged = true;
+      details.push(`Renovación reactivada: ${client.domain} pasó a pendiente (${diffDays} días respecto al vencimiento)`);
+    }
+  }
+
+  if (statusChanged && !writeDb(db)) {
+    console.error('No se pudieron guardar los estados de renovación reactivados.');
+    details.push('No se pudieron guardar los cambios de estado de renovación.');
+  }
+
+  // Status transitions above still happen when SMTP is unavailable, so renewal
+  // reminders can start once the mail configuration is restored.
+  if (!smtp || !smtp.host || !smtp.user || !smtp.pass) {
+    console.log('Chequeo automático de vencimiento: SMTP no configurado. Omitiendo despacho.');
+    details.push('SMTP no configurado. Omitiendo despacho automático.');
+    return { triggeredCount: 0, details };
+  }
 
   for (const client of clients) {
     if (!client.expiryDate) continue;
@@ -283,8 +307,9 @@ async function runReminderCheck(): Promise<{ triggeredCount: number; details: st
       );
     };
 
-    // Case 1: 15 days before expiration
-    if (diffDays === 15 && client.paymentStatus === 'pending') {
+    // If a scheduled pass was missed, send the 15-day reminder late rather
+    // than dropping it permanently after the exact date has passed.
+    if (diffDays <= 15 && diffDays > 0 && client.paymentStatus === 'pending') {
       if (!alreadySent('15_days_before')) {
         const res = await sendNotificationEmail(client, '15_days_before');
         if (res.success) {
